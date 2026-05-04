@@ -6,9 +6,12 @@
   <title>Gran GIOIA Ginza</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* CSSはそのまま継承 */
     body { background-color: #000; color: #f1d592; font-family: 'Noto Serif JP', serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; text-align: center; }
-    .container { padding: 40px 20px; border: 1px solid #f1d592; width: 85%; max-width: 340px; background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,1); transition: opacity 0.5s; }
+    .container { padding: 40px 20px; border: 1px solid #f1d592; width: 85%; max-width: 340px; background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,1); position: relative; overflow: hidden; }
+    
+    /* フォーム全体を包むラッパー（読み込み時にこれを暗くする） */
+    #form-content { transition: opacity 0.5s; opacity: 1; }
+    
     .logo { width: 180px; margin-bottom: 15px; }
     h2 { font-size: 1.1rem; letter-spacing: 3px; margin: 0 0 10px 0; color: #f1d592; font-weight: 400; }
     .subtitle { font-size: 0.75rem; color: #fff; margin-bottom: 30px; letter-spacing: 1px; }
@@ -20,9 +23,24 @@
     .skip-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; }
     .skip-text { font-size: 0.8rem; color: #aaa; margin-bottom: 10px; }
     .skip-btn { color: #f1d592; font-size: 0.85rem; text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
-    #loading { display: none; color: #f1d592; margin-top: 30px; font-size: 1rem; letter-spacing: 2px; }
+
+    /* ★ Now Loading アニメーション（コンテナ内の中央に配置、常に明るく） */
+    #loading { 
+      display: none; 
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #f1d592; 
+      font-size: 1.1rem; 
+      letter-spacing: 2px; 
+      z-index: 10;
+      white-space: nowrap;
+      text-shadow: 0 0 15px rgba(241, 213, 146, 0.5);
+    }
     .dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
     @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' . .'; } 60% { content: ' . . .'; } 80%, 100% { content: ''; } }
+
+    /* 結果画面 */
     .result-container { background:#000; width:100%; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; animation: fadeIn 1.2s; }
     .photo-frame { width:100%; max-width:500px; box-shadow: 0 0 40px rgba(241,213,146,0.15); margin-bottom: 10px; }
     .msg-box { padding: 0 20px 40px; color: #fff; line-height: 1.8; width: 100%; max-width: 500px; box-sizing: border-box; }
@@ -31,27 +49,31 @@
     .thanks-msg { font-size: 0.72rem; color: #fff; margin-bottom: 15px; letter-spacing: 0.2px; line-height: 2; }
     .sns-msg { color: #f1d592; font-size: 0.78rem; margin-top: 15px; letter-spacing: 0.5px; }
     .footer-logo { width: 110px; margin-top: 30px; opacity: 0.6; transition: 0.3s; }
+
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
-  <div id="ui" class="container">
-    <img id="top-logo" src="" class="logo" alt="Gran GIOIA">
-    <h2>The Best Moment</h2>
-    <p class="subtitle">その一瞬を手元に</p>
-    <div class="input-group">
-      <label>メールアドレス（任意）</label>
-      <input type="email" id="email" placeholder="example@mail.com">
+  <div class="container">
+    <div id="form-content">
+      <img id="top-logo" src="" class="logo" alt="Gran GIOIA">
+      <h2>The Best Moment</h2>
+      <p class="subtitle">その一瞬を手元に</p>
+      <div class="input-group">
+        <label>メールアドレス（任意）</label>
+        <input type="email" id="email" placeholder="example@mail.com">
+      </div>
+      <div class="disclaimer">
+        ※頂戴したメールアドレスには、年に数回、当店より特別なご案内をお送りする場合がございます。<br>
+        ※本画像は第三者に公開されることはありません。
+      </div>
+      <button class="btn" onclick="submit()">写真をダウンロード</button>
+      <div class="skip-container">
+        <p class="skip-text">アドレスを入力せずに</p>
+        <button class="skip-btn" onclick="skip()">そのまま進む</button>
+      </div>
     </div>
-    <div class="disclaimer">
-      ※頂戴したメールアドレスには、年に数回、当店より特別なご案内をお送りする場合がございます。<br>
-      ※本画像は第三者に公開されることはありません。
-    </div>
-    <button class="btn" onclick="submit()">写真をダウンロード</button>
-    <div class="skip-container">
-      <p class="skip-text">アドレスを入力せずに</p>
-      <button class="skip-btn" onclick="skip()">そのまま進む</button>
-    </div>
+
     <div id="loading">Now Loading<span class="dots"></span></div>
   </div>
 
@@ -73,7 +95,6 @@
     }
     function skip() { handleProcess("SKIP"); }
 
-    // ★ Base64を軽量なBlobに変換する魔法
     function base64ToBlob(base64, type) {
       const bin = atob(base64);
       const buffer = new Uint8Array(bin.length);
@@ -82,19 +103,22 @@
     }
 
     function handleProcess(emailValue) {
-      document.getElementById('ui').style.opacity = "0.3";
+      // ★背景だけを暗くし、Loadingを表示する
+      document.getElementById('form-content').style.opacity = "0.15";
       document.getElementById('loading').style.display = 'block';
+      const btns = document.getElementsByTagName('button');
+      for(let b of btns) b.disabled = true;
 
       fetch(`${API_URL}?action=fetch&fileId=${fileId}&email=${encodeURIComponent(emailValue)}`)
         .then(res => res.json())
         .then(res => {
           if (res.status === "error") throw new Error(res.message);
           
-          // Blob変換実行
           const blob = base64ToBlob(res.data, 'image/jpeg');
           const blobUrl = URL.createObjectURL(blob);
           const fileName = res.fileName || "photo.jpg";
           
+          // 画面全体を書き換え（結果表示）
           document.body.innerHTML = `
             <div class="result-container">
               <a href="${blobUrl}" download="${fileName}">
