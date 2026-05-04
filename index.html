@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gran GIOIA Ginza</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* CSSは以前のものを継承しつつ、API連携用に微調整 */
+    body { background-color: #000; color: #f1d592; font-family: 'Noto Serif JP', serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; text-align: center; }
+    .container { padding: 40px 20px; border: 1px solid #f1d592; width: 85%; max-width: 340px; background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,1); transition: opacity 0.5s; }
+    .logo { width: 180px; margin-bottom: 15px; }
+    h2 { font-size: 1.1rem; letter-spacing: 3px; margin: 0 0 10px 0; color: #f1d592; font-weight: 400; }
+    .subtitle { font-size: 0.75rem; color: #fff; margin-bottom: 30px; letter-spacing: 1px; }
+    .input-group { margin-bottom: 20px; text-align: left; }
+    label { font-size: 0.7rem; color: #f1d592; margin-left: 5px; }
+    input[type="email"] { width: 100%; padding: 14px; margin-top: 5px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box; font-size: 16px; outline: none; border-radius: 0; }
+    .disclaimer { font-size: 0.6rem; color: #888; line-height: 1.6; margin-bottom: 20px; text-align: left; padding: 0 5px; }
+    .btn { display: block; width: 100%; padding: 18px; background-color: #f1d592; color: #000; font-weight: bold; border: none; cursor: pointer; letter-spacing: 2px; font-size: 0.95rem; }
+    .skip-container { margin-top: 20px; padding-top: 15px; border-top: 1px solid #333; }
+    .skip-text { font-size: 0.8rem; color: #aaa; margin-bottom: 10px; }
+    .skip-btn { color: #f1d592; font-size: 0.85rem; text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
+    #loading { display: none; color: #f1d592; margin-top: 30px; font-size: 1rem; letter-spacing: 2px; }
+    .dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
+    @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' . .'; } 60% { content: ' . . .'; } 80%, 100% { content: ''; } }
+    .result-container { background:#000; width:100%; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; animation: fadeIn 1.2s; }
+    .photo-frame { width:100%; max-width:500px; box-shadow: 0 0 40px rgba(241,213,146,0.15); margin-bottom: 10px; }
+    .msg-box { padding: 0 20px 40px; color: #fff; line-height: 1.8; width: 100%; max-width: 500px; box-sizing: border-box; }
+    .security-note { font-size: 0.62rem; color: #666; text-align: right; margin: 0 0 25px 0; line-height: 1.5; letter-spacing: 0.2px; }
+    .long-press { color: #f1d592; font-size: 0.95rem; font-weight: bold; margin-bottom: 20px; letter-spacing: 1px; }
+    .thanks-msg { font-size: 0.72rem; color: #fff; margin-bottom: 15px; letter-spacing: 0.2px; line-height: 2; }
+    .sns-msg { color: #f1d592; font-size: 0.78rem; margin-top: 15px; letter-spacing: 0.5px; }
+    .footer-logo { width: 110px; margin-top: 30px; opacity: 0.6; transition: 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div id="ui" class="container">
+    <img id="top-logo" src="" class="logo" alt="Gran GIOIA">
+    <h2>The Best Moment</h2>
+    <p class="subtitle">その一瞬を手元に</p>
+    <div class="input-group">
+      <label>メールアドレス（任意）</label>
+      <input type="email" id="email" placeholder="example@mail.com">
+    </div>
+    <div class="disclaimer">
+      ※頂戴したメールアドレスには、年に数回、当店より特別なご案内をお送りする場合がございます。<br>
+      ※本画像は第三者に公開されることはありません。
+    </div>
+    <button class="btn" onclick="submit()">写真をダウンロード</button>
+    <div class="skip-container">
+      <p class="skip-text">アドレスを入力せずに</p>
+      <button class="skip-btn" onclick="skip()">そのまま進む</button>
+    </div>
+    <div id="loading">Now Loading<span class="dots"></span></div>
+  </div>
+
+  <script>
+    // --- ★ここにメモしたGASのウェブアプリURLを貼ってください ---
+    const API_URL = "ここにGASのURLを貼る";
+    
+    // URLから写真IDを取得
+    const params = new URLSearchParams(window.location.search);
+    const fileId = params.get('gift_id') || params.get('id');
+
+    // ロゴの読み込み
+    const logoId = "1lSCDw1sDEFQEVssyQBceSLvNS3FXXOIq";
+    const logoUrl = `https://lh3.googleusercontent.com/d/${logoId}`;
+    document.getElementById('top-logo').src = logoUrl;
+
+    function submit() {
+      const email = document.getElementById('email').value;
+      if(!email) {
+        if(!window.confirm("メールアドレスが入力されていません。\nこのままダウンロード画面へ進みますか？")) return;
+      }
+      handleProcess(email || "SKIP");
+    }
+
+    function skip() { handleProcess("SKIP"); }
+
+    function handleProcess(emailValue) {
+      document.getElementById('ui').style.opacity = "0.3";
+      document.getElementById('loading').style.display = 'block';
+
+      // fetchを使ってGAS APIを叩く
+      const fetchUrl = `${API_URL}?action=fetch&fileId=${fileId}&email=${encodeURIComponent(emailValue)}`;
+      
+      fetch(fetchUrl)
+        .then(res => res.json())
+        .then(res => {
+          if (res.status === "error") throw new Error(res.message);
+          
+          document.body.innerHTML = `
+            <div class="result-container">
+              <img src="data:image/jpeg;base64,${res.data}" class="photo-frame">
+              <div class="msg-box">
+                <div class="security-note">
+                  本画像はインターネット上で非公開です。ご安心ください。<br>
+                  プライバシー保護のため、48時間で完全削除されます。<br>
+                  利用しやすいようスクエアサイズとなります。
+                </div>
+                <p class="long-press">画像を長押しして保存してください</p>
+                <p class="thanks-msg">
+                  数あるレストランの中から、大切な一日に<br>
+                  <span style="font-size:0.7rem;">Gran GIOIAをお選びいただき心より感謝致します。</span>
+                </p>
+                <p class="sns-msg">
+                  今日という素晴らしい思い出を、<br>ぜひ皆様と分かち合っていただければ幸いです。
+                </p>
+                <a href="https://ginzagioia.studio.site/">
+                  <img src="${logoUrl}" class="footer-logo" alt="Official Site">
+                </a>
+              </div>
+            </div>
+          `;
+        })
+        .catch(err => {
+          alert("エラーが発生しました。再度お試しください。");
+          console.error(err);
+          location.reload();
+        });
+    }
+  </script>
+</body>
+</html>
