@@ -6,7 +6,7 @@
   <title>Gran GIOIA Ginza</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* 以前のCSSを継承（省略なし） */
+    /* CSSはそのまま継承 */
     body { background-color: #000; color: #f1d592; font-family: 'Noto Serif JP', serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; text-align: center; }
     .container { padding: 40px 20px; border: 1px solid #f1d592; width: 85%; max-width: 340px; background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,1); transition: opacity 0.5s; }
     .logo { width: 180px; margin-bottom: 15px; }
@@ -28,8 +28,8 @@
     .msg-box { padding: 0 20px 40px; color: #fff; line-height: 1.8; width: 100%; max-width: 500px; box-sizing: border-box; }
     .security-note { font-size: 0.62rem; color: #666; text-align: right; margin: 0 0 25px 0; line-height: 1.5; letter-spacing: 0.2px; }
     .long-press { color: #f1d592; font-size: 0.95rem; font-weight: bold; margin-bottom: 20px; letter-spacing: 1px; }
-    .thanks-msg { font-size: 0.75rem; color: #fff; margin-bottom: 15px; letter-spacing: 0.2px; line-height: 2; }
-    .sns-msg { color: #f1d592; font-size: 0.82rem; margin-top: 15px; letter-spacing: 0.5px; }
+    .thanks-msg { font-size: 0.72rem; color: #fff; margin-bottom: 15px; letter-spacing: 0.2px; line-height: 2; }
+    .sns-msg { color: #f1d592; font-size: 0.78rem; margin-top: 15px; letter-spacing: 0.5px; }
     .footer-logo { width: 110px; margin-top: 30px; opacity: 0.6; transition: 0.3s; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
@@ -73,6 +73,14 @@
     }
     function skip() { handleProcess("SKIP"); }
 
+    // ★ Base64を軽量なBlobに変換する魔法
+    function base64ToBlob(base64, type) {
+      const bin = atob(base64);
+      const buffer = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buffer[i] = bin.charCodeAt(i);
+      return new Blob([buffer.buffer], {type: type});
+    }
+
     function handleProcess(emailValue) {
       document.getElementById('ui').style.opacity = "0.3";
       document.getElementById('loading').style.display = 'block';
@@ -82,11 +90,15 @@
         .then(res => {
           if (res.status === "error") throw new Error(res.message);
           
-          // ★ここでダウンロード属性付きのリンクを仕込み、.jpgを強調します
+          // Blob変換実行
+          const blob = base64ToBlob(res.data, 'image/jpeg');
+          const blobUrl = URL.createObjectURL(blob);
+          const fileName = res.fileName || "photo.jpg";
+          
           document.body.innerHTML = `
             <div class="result-container">
-              <a href="data:image/jpeg;base64,${res.data}" download="${res.fileName}">
-                <img src="data:image/jpeg;base64,${res.data}" class="photo-frame">
+              <a href="${blobUrl}" download="${fileName}">
+                <img src="${blobUrl}" class="photo-frame">
               </a>
               <div class="msg-box">
                 <div class="security-note">
@@ -110,7 +122,7 @@
           `;
         })
         .catch(err => {
-          alert("失敗しました。再度お試しください。");
+          alert("通信に失敗しました。再度お試しください。");
           location.reload();
         });
     }
