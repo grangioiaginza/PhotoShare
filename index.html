@@ -8,10 +8,7 @@
   <style>
     body { background-color: #000; color: #f1d592; font-family: 'Noto Serif JP', serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; text-align: center; }
     .container { padding: 40px 20px; border: 1px solid #f1d592; width: 85%; max-width: 340px; background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,1); position: relative; overflow: hidden; }
-    
-    /* フォーム全体を包むラッパー（読み込み時にこれを暗くする） */
     #form-content { transition: opacity 0.5s; opacity: 1; }
-    
     .logo { width: 180px; margin-bottom: 15px; }
     h2 { font-size: 1.1rem; letter-spacing: 3px; margin: 0 0 10px 0; color: #f1d592; font-weight: 400; }
     .subtitle { font-size: 0.75rem; color: #fff; margin-bottom: 30px; letter-spacing: 1px; }
@@ -24,23 +21,24 @@
     .skip-text { font-size: 0.8rem; color: #aaa; margin-bottom: 10px; }
     .skip-btn { color: #f1d592; font-size: 0.85rem; text-decoration: underline; cursor: pointer; background: none; border: none; font-family: inherit; }
 
-    /* ★ Now Loading アニメーション（コンテナ内の中央に配置、常に明るく） */
-    #loading { 
-      display: none; 
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      color: #f1d592; 
-      font-size: 1.1rem; 
-      letter-spacing: 2px; 
-      z-index: 10;
-      white-space: nowrap;
-      text-shadow: 0 0 15px rgba(241, 213, 146, 0.5);
+    /* Now Loading & ロゴ組み立てアニメーション */
+    #loading { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10; }
+    .build-container { position: relative; width: 150px; height: 150px; margin: 0 auto 15px; }
+    .logo-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; animation: build 2.8s ease-in-out forwards; }
+    
+    @keyframes build { 
+      0%, 10% { opacity: 0; transform: scale(0.95); }
+      100% { opacity: 1; transform: scale(1); }
     }
+    .logo-layer:nth-child(2) { animation-delay: 0.6s; } 
+    .logo-layer:nth-child(3) { animation-delay: 1.2s; } 
+    .logo-layer:nth-child(4) { animation-delay: 1.8s; } 
+
+    .loading-text { color: #f1d592; font-size: 1rem; letter-spacing: 2px; text-shadow: 0 0 15px rgba(241, 213, 146, 0.5); margin-top: 5px; }
     .dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
     @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' . .'; } 60% { content: ' . . .'; } 80%, 100% { content: ''; } }
 
-    /* 結果画面 */
+    /* 結果表示 */
     .result-container { background:#000; width:100%; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; animation: fadeIn 1.2s; }
     .photo-frame { width:100%; max-width:500px; box-shadow: 0 0 40px rgba(241,213,146,0.15); margin-bottom: 10px; }
     .msg-box { padding: 0 20px 40px; color: #fff; line-height: 1.8; width: 100%; max-width: 500px; box-sizing: border-box; }
@@ -49,7 +47,6 @@
     .thanks-msg { font-size: 0.72rem; color: #fff; margin-bottom: 15px; letter-spacing: 0.2px; line-height: 2; }
     .sns-msg { color: #f1d592; font-size: 0.78rem; margin-top: 15px; letter-spacing: 0.5px; }
     .footer-logo { width: 110px; margin-top: 30px; opacity: 0.6; transition: 0.3s; }
-
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
@@ -73,8 +70,15 @@
         <button class="skip-btn" onclick="skip()">そのまま進む</button>
       </div>
     </div>
-
-    <div id="loading">Now Loading<span class="dots"></span></div>
+    <div id="loading">
+      <div class="build-container">
+        <img src="https://grangioiaginza.github.io/PhotoShare/1_Gran.webp" class="logo-layer">
+        <img src="https://grangioiaginza.github.io/PhotoShare/2_GIOIA.webp" class="logo-layer">
+        <img src="https://grangioiaginza.github.io/PhotoShare/3_Ginza.webp" class="logo-layer">
+        <img src="https://grangioiaginza.github.io/PhotoShare/4_Frame.webp" class="logo-layer">
+      </div>
+      <div class="loading-text">Now Loading<span class="dots"></span></div>
+    </div>
   </div>
 
   <script>
@@ -88,9 +92,7 @@
 
     function submit() {
       const email = document.getElementById('email').value;
-      if(!email) {
-        if(!window.confirm("メールアドレスが入力されていません。\nこのままダウンロード画面へ進みますか？")) return;
-      }
+      if(!email) { if(!window.confirm("メールアドレスが入力されていません。\nこのままダウンロード画面へ進みますか？")) return; }
       handleProcess(email || "SKIP");
     }
     function skip() { handleProcess("SKIP"); }
@@ -103,25 +105,17 @@
     }
 
     function handleProcess(emailValue) {
-      // ★背景だけを暗くし、Loadingを表示する
       document.getElementById('form-content').style.opacity = "0.15";
       document.getElementById('loading').style.display = 'block';
-      const btns = document.getElementsByTagName('button');
-      for(let b of btns) b.disabled = true;
-
       fetch(`${API_URL}?action=fetch&fileId=${fileId}&email=${encodeURIComponent(emailValue)}`)
         .then(res => res.json())
         .then(res => {
           if (res.status === "error") throw new Error(res.message);
-          
           const blob = base64ToBlob(res.data, 'image/jpeg');
           const blobUrl = URL.createObjectURL(blob);
-          const fileName = res.fileName || "photo.jpg";
-          
-          // 画面全体を書き換え（結果表示）
           document.body.innerHTML = `
             <div class="result-container">
-              <a href="${blobUrl}" download="${fileName}">
+              <a href="${blobUrl}" download="${res.fileName || 'photo.jpg'}">
                 <img src="${blobUrl}" class="photo-frame">
               </a>
               <div class="msg-box">
@@ -135,20 +129,14 @@
                   数あるレストランの中から、大切な一日に<br>
                   <span style="font-size:0.7rem; letter-spacing:0;">Gran GIOIAをお選びいただき心より感謝致します。</span>
                 </p>
-                <p class="sns-msg">
-                  今日という素晴らしい思い出を、<br>ぜひ皆様と分かち合っていただければ幸いです。
-                </p>
+                <p class="sns-msg">今日という素晴らしい思い出を、<br>ぜひ皆様と分かち合っていただければ幸いです。</p>
                 <a href="https://ginzagioia.studio.site/">
                   <img src="${logoUrl}" class="footer-logo" alt="Official Site">
                 </a>
               </div>
-            </div>
-          `;
+            </div>`;
         })
-        .catch(err => {
-          alert("通信に失敗しました。再度お試しください。");
-          location.reload();
-        });
+        .catch(err => { alert("通信に失敗しました。再度お試しください。"); location.reload(); });
     }
   </script>
 </body>
