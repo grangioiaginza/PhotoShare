@@ -99,22 +99,39 @@
     }
     function skip() { handleProcess("SKIP"); }
 
+    // 【追加機能1】Android/Safari互換性の強化（空白文字の自動除去を追加）
     function base64ToBlob(base64, type) {
-      const bin = atob(base64);
+      const cleanBase64 = base64.replace(/\s/g, ''); 
+      const bin = window.atob(cleanBase64);
       const buffer = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) buffer[i] = bin.charCodeAt(i);
       return new Blob([buffer.buffer], {type: type});
     }
 
-    function handleProcess(emailValue) {
+    // 【追加機能2＆3】自動リトライ（最大3回、1.5秒間隔）とローディング表示の切り替え
+    async function handleProcess(emailValue) {
       document.getElementById('form-content').style.opacity = "0.15";
       document.getElementById('loading').style.display = 'block';
-      fetch(`${API_URL}?action=fetch&fileId=${fileId}&email=${encodeURIComponent(emailValue)}`)
-        .then(res => res.json())
-        .then(res => {
+      
+      const maxRetries = 3;
+      const loadingTextEl = document.querySelector('.loading-text');
+      const fetchUrl = `${API_URL}?action=fetch&fileId=${fileId}&email=${encodeURIComponent(emailValue)}`;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          // 2回目以降のリトライ時はテキストを変更
+          if (attempt > 1) {
+            loadingTextEl.innerHTML = `接続確認中<span class="dots"></span>`;
+          }
+
+          const res = await fetch(fetchUrl).then(response => response.json());
+          
           if (res.status === "error") throw new Error(res.message);
+
           const blob = base64ToBlob(res.data, 'image/jpeg');
           const blobUrl = URL.createObjectURL(blob);
+          
+          // 成功時：元の出力HTMLをそのまま描画
           document.body.innerHTML = `
             <div class="result-container">
               <a href="${blobUrl}" download="${res.fileName || 'photo.jpg'}">
@@ -137,8 +154,20 @@
                 </a>
               </div>
             </div>`;
-        })
-        .catch(err => { alert("通信に失敗しました。再度お試しください。"); location.reload(); });
+            
+          return; // 成功したらループを抜けて終了
+
+        } catch (err) {
+          if (attempt === maxRetries) {
+            // 3回失敗して初めてエラー表示
+            alert("通信に失敗しました。再度お試しください。");
+            location.reload();
+          } else {
+            // 失敗した場合は1.5秒（1500ミリ秒）待機して自動リトライ
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
+        }
+      }
     }
   </script>
 </body>
