@@ -83,9 +83,10 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzfW_Qna12pnIL9mFwLUOX4_uGLPtpGe9krAsug7pCBSUvGSuoDDxAKKXuy0KTpnIPV/exec";
+    // ★ GAS側で「新しいデプロイ」をして発行された最新の「ウェブアプリURL」に差し替えてください
+    const API_URL = "https://script.google.com/macros/s/AKfycbyAXkM62HYOK-3vb0RT5NXMjB885sx0acH-VZt25JY9K8oVh8oxobjIwIqAaOaNHOue/exec";
     
-    // GitHub上のロゴ画像URL（ファイル名は適宜変更してください）
+    // GitHub上のロゴ画像URL
     const logoUrl = "https://grangioiaginza.github.io/PhotoShare/shop_logo.png";
     document.getElementById('top-logo').src = logoUrl;
 
@@ -99,16 +100,7 @@
     }
     function skip() { handleProcess("SKIP"); }
 
-    // 【追加機能1】Android/Safari互換性の強化（空白文字の自動除去を追加）
-    function base64ToBlob(base64, type) {
-      const cleanBase64 = base64.replace(/\s/g, ''); 
-      const bin = window.atob(cleanBase64);
-      const buffer = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) buffer[i] = bin.charCodeAt(i);
-      return new Blob([buffer.buffer], {type: type});
-    }
-
-    // 【追加機能2＆3】自動リトライ（最大3回、1.5秒間隔）とローディング表示の切り替え
+    // 超軽量化（Google Drive直リンク表示）＋自動リトライ機構（最大3回）
     async function handleProcess(emailValue) {
       document.getElementById('form-content').style.opacity = "0.15";
       document.getElementById('loading').style.display = 'block';
@@ -119,7 +111,6 @@
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          // 2回目以降のリトライ時はテキストを変更
           if (attempt > 1) {
             loadingTextEl.innerHTML = `接続確認中<span class="dots"></span>`;
           }
@@ -128,14 +119,13 @@
           
           if (res.status === "error") throw new Error(res.message);
 
-          const blob = base64ToBlob(res.data, 'image/jpeg');
-          const blobUrl = URL.createObjectURL(blob);
-          
-          // 成功時：元の出力HTMLをそのまま描画
+          // 超軽量化：GASから返ってきた写真の直接表示用URLをそのままセット
+          const imageUrl = res.data;
+
           document.body.innerHTML = `
             <div class="result-container">
-              <a href="${blobUrl}" download="${res.fileName || 'photo.jpg'}">
-                <img src="${blobUrl}" class="photo-frame">
+              <a href="${imageUrl}" download="${res.fileName || 'photo.jpg'}">
+                <img src="${imageUrl}" class="photo-frame">
               </a>
               <div class="msg-box">
                 <div class="security-note">
@@ -159,7 +149,6 @@
 
         } catch (err) {
           if (attempt === maxRetries) {
-            // 3回失敗して初めてエラー表示
             alert("通信に失敗しました。再度お試しください。");
             location.reload();
           } else {
